@@ -5,7 +5,10 @@
 ## Para o desenvolvimento, será necessario utilizar as bibliotecas do selenium e BeatifulSoup para extração de dados dos e-commerce e pyrogram e dotenv para ciração do bot.
 ## Integração será feita por meio do Heroku.
 #########
-'''from selenium import webdriver
+from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
+from selenium.common.exceptions import TimeoutException
+'''
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC '''
@@ -16,46 +19,70 @@ import os
 from pyrogram import Client
 from dotenv import load_dotenv
 from datetime import datetime
+from models import Produto, Pessoa
 
 data_atual = datetime.today().now().date().strftime("%d.%m.%Y")
-#driver = webdriver.Firefox()
 loja = ''
-def acessar_produto(url: str):
-    response = requests.get(url)
-    if 'mercadolivre' in url:
-        loja = 'mercado livre'
-    elif 'amazon' in url:
-        loja = 'amazon'
-    elif 'shopee' in url:
-        loja = 'shopee'
-    elif 'aliexpress' in url:
-        loja = 'aliexpress'
-    elif 'kabum' in url:
-        loja = 'kabum'
-    elif 'terabyte' in url:
-        loja = 'terabyte'
-    
-    verificar_preco(loja, response)
+url = ''
+driver = ''
+options = Options()
+options.add_argument('--headless')
+print("nao e pra estar aquiiii")
 
-    
-def verificar_preco(loja: str, response):
+def acessar_produto(link: str):
+    driver = webdriver.Firefox()
+    url = link
+    e = False
+    try:
+        driver.get(url)
+    except TimeoutException:
+        print("Erro ao abrir o link: TIME OUT EXCEPTION.")
+        driver.quit()
+        e = True
+    except Exception as ex:
+        print("Erro nao registrado ao abrir o link: ", ex)
+        driver.quit()
+        e = True
+           
+    if not e:    
+        if 'mercadolivre' in url:
+            loja = 'mercado livre'
+        elif 'amazon' in url or 'a.co' in url:
+            loja = 'amazon'
+        elif 'aliexpress' in url:
+            loja = 'aliexpress'
+        elif 'kabum' in url:
+            loja = 'kabum'
+        elif 'terabyte' in url:
+            loja = 'terabyte'
+        
+        print(loja)
+        return verificar_preco(loja, driver)
+
+def verificar_preco(loja: str, driver: webdriver):
     #MERCADO LIVRE
-    soup = BeautifulSoup(response.text, 'html.parser')
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    data_consulta = data_atual
+    preco_inicial = None
+    produto_nome = None
     if loja == 'mercado livre':
         precos = soup.find_all('span', class_='andes-money-amount__fraction')
         preco_inicial = precos[1].text
         produtos = soup.find_all('h1', class_='ui-pdp-title')
-        produto_nome = produtos[0].text
-        data_consulta = data_atual
+        produto_nome = produtos[0].text        
     elif loja == 'amazon':
-        span_preco = soup.select_one('span.a-price-whole')
-        
-        #preco = span_preco[13]
-        print(span_preco)
-        i = 0
-        #for item in span_preco[0]:
-            #print(item)
-            
+        precos = soup.find_all("span", class_="a-price")
+        preco_inicial = precos[0].text
+        produto = soup.find('span', id="productTitle").text
+        print(produto)
+    driver.quit()
+    return produto
+
+def definir_produto(prod_name, prod_preco, usuario, data_verificacao):
+    if prod_name and prod_preco and usuario:
+        produto = Produto(nome=prod_name, preco_inicial=prod_preco, data_verificacao=data_verificacao, url=url, nome_loja=loja)
+        produto.pessoa_id = ''
+    
     
 def comparar_preço(preco_atual, preco_anterior):
     if preco_atual < preco_anterior:
@@ -64,4 +91,4 @@ def comparar_preço(preco_atual, preco_anterior):
 
 
 #__main__
-acessar_produto("https://www.amazon.com.br/Apple-iPhone-14-128-GB/dp/B0BZ66ZCZ9?pf_rd_r=Y8J4WBG4129AK2Z9J374&pf_rd_t=PageFrameworkApplication&pf_rd_i=16209062011&pf_rd_p=ae3d3dc9-1e88-4cd1-8974-532941e13f8e&pf_rd_s=merchandised-search-4&ref=dlx_16209_sh_dcl_img_0_d7738cc9_dt_mese4_8e")
+#acessar_produto("https://a.co/d/6YBwZxH")
