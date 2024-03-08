@@ -25,16 +25,47 @@ class Pessoa(Base):
                     session.commit()
                 except Exception as e:
                     print("Erro ao cadastrar usuario: ", e)
+        
+    def verificar_user(username: str):
+        with Session(engine) as session:
+            user = session.scalar(select(Pessoa.id).where(Pessoa.username == username))
+            if user:
+                print("Usuario carregado: ", user)
+                return user
+            else:
+                print("Criando novo usuario: ", username)
+                Pessoa.add_user(username)
+                Pessoa.verificar_user(username)
+                
     
 class Produto(Base):
     __tablename__= 'product'
     id = Column(Integer, primary_key=True, nullable=False)
     pessoa_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    nome = Column(String(250), nullable=False)
-    link = Column(String, nullable=False)
+    nome = Column(String(400), nullable=False)
+    url = Column(String, nullable=False)
     data_verificao = Column(DateTime, nullable=False)
-    preço_inicial = Column(Float, nullable=False)
-    preço_atual = Column(Float)
+    preco_inicial = Column(Float, nullable=False)
+    preco_atual = Column(Float)
     melhor_preço = Column(Float)
     nome_loja = Column(String(100), nullable=False)
     data_promocao = Column(DateTime)
+    
+    def add_produto(nome: str, url: str, preco_inicial: str, nome_loja: str, data_verificacao, pessoa_id):
+        if nome and url and preco_inicial and nome_loja and data_verificacao and pessoa_id:
+            produto = Produto(nome=nome, url=url, data_verificacao=data_verificacao, preco_inicial=preco_inicial, nome_loja=nome_loja, pessoa_id=pessoa_id)
+            try:
+                with Session(engine) as session:
+                    produtos = session.scalars(select(Produto).where(Produto.pessoa_id == pessoa_id))
+                    print("lista de produtos do usuario: ", produtos)
+                    if nome in produtos:
+                        return f'O produto {nome} já está em sua lista de monitoramento. Favor aguarde. Qualquer promoção enviaremos uma notificação para você!'
+                    else:
+                        session.add(produto)
+                        try:
+                            session.commit()
+                            return 'O produto foi adicionado em sua lista de monitoramento.'
+                        except Exception as e:
+                            print(f"Erro ao cadastrar produto: ", e)
+            except Exception as e:
+                print("Erro ao tentar fazer conexão com o banco de dados: ", e)
