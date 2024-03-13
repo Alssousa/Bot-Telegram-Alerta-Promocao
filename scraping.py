@@ -21,15 +21,21 @@ from dotenv import load_dotenv
 from datetime import datetime
 from models import Produto, Pessoa
 
-data_atual = datetime.today().now().date().strftime("%d.%m.%Y")
+
+data_atual = datetime.today().now()
+#data_atual = datetime.today().now().date().strftime("%d.%m.%Y")
 loja = ''
 url = ''
 driver = ''
 options = Options()
 options.add_argument('--headless')
 print("nao e pra estar aquiiii")
+global current_user
 
-def acessar_produto(link: str):
+def acessar_produto(link: str, user):
+    global current_user
+    current_user = user
+    print('username teste2: ', current_user)
     driver = webdriver.Firefox()
     url = link
     e = False
@@ -71,17 +77,27 @@ def verificar_preco(loja: str, driver: webdriver):
         produtos = soup.find_all('h1', class_='ui-pdp-title')
         produto_nome = produtos[0].text        
     elif loja == 'amazon':
+        print("dentro da amazon")
         precos = soup.find_all("span", class_="a-price")
-        preco_inicial = precos[0].text
-        produto = soup.find('span', id="productTitle").text
-        print(produto)
+        preco_inicial = precos[0].find('span', class_='a-offscreen').text
+        preco_inicial = preco_inicial[2:]
+        produto_nome = soup.find('span', id="productTitle").text.strip()
+        print('Nome do produto: ', produto_nome, ' Produto preço: ', preco_inicial, '\nusername teste3: ', current_user, 'Data da consulta: ', data_consulta) 
     driver.quit()
-    return produto
+      
+    return definir_produto(produto_nome, preco_inicial, current_user, data_consulta) 
 
 def definir_produto(prod_name, prod_preco, usuario, data_verificacao):
     if prod_name and prod_preco and usuario:
-        produto = Produto(nome=prod_name, preco_inicial=prod_preco, data_verificacao=data_verificacao, url=url, nome_loja=loja)
-        produto.pessoa_id = ''
+        #produto = Produto(nome=prod_name, preco_inicial=prod_preco, data_verificacao=data_verificacao, url=url, nome_loja=loja)
+        user_id = Pessoa.verificar_user(usuario)
+        #produto.pessoa_id = user_id
+        #refatorar...
+        #return Produto.add_produto(prod_name, url, prod_preco, loja, data_verificacao, user_id)r
+        return 'Deu certo até a partde de cadastrar produtos'
+    else:
+        return f'Não foi possivel obter os parâmetros do produto ou nome de usuario: DEBUGvars::prod_name:{prod_name}, prod_preco:{prod_preco}, usuario:{usuario}, data_{data_verificacao}'
+        
     
     
 def comparar_preço(preco_atual, preco_anterior):
