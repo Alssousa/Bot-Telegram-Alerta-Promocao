@@ -35,7 +35,7 @@ class Pessoa(Base):
             else:
                 print("Criando novo usuario: ", username)
                 Pessoa.add_user(username)
-                Pessoa.verificar_user(username)
+                return Pessoa.verificar_user(username)
                 
     
 class Produto(Base):
@@ -44,22 +44,35 @@ class Produto(Base):
     pessoa_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     nome = Column(String(400), nullable=False)
     url = Column(String, nullable=False)
-    data_verificao = Column(DateTime, nullable=False)
-    preco_inicial = Column(Float, nullable=False)
-    preco_atual = Column(Float)
-    melhor_preço = Column(Float)
+    data_verificacao = Column(DateTime, nullable=False)
+    preco_inicial = Column(String, nullable=False)
+    preco_atual = Column(String)
+    melhor_preço = Column(String)
     nome_loja = Column(String(100), nullable=False)
     data_promocao = Column(DateTime)
     
-    def add_produto(nome: str, url: str, preco_inicial: str, nome_loja: str, data_verificacao, pessoa_id):
+    def add_produto(nome: str, url: str, preco_inicial: str, nome_loja: str, data_verificacao: DateTime, pessoa_id):
+        #print(f'Estou aqui na função add...\ndebug: nome: {nome}, preco_inicial: {preco_inicial}, nome_loja: {nome_loja}, data_verificacao: {data_verificacao}, pessoa_id: {pessoa_id}, url: {url}')
         if nome and url and preco_inicial and nome_loja and data_verificacao and pessoa_id:
             produto = Produto(nome=nome, url=url, data_verificacao=data_verificacao, preco_inicial=preco_inicial, nome_loja=nome_loja, pessoa_id=pessoa_id)
             try:
                 with Session(engine) as session:
-                    produtos = session.scalars(select(Produto).where(Produto.pessoa_id == pessoa_id))
+                    produtos = session.scalars(select(Produto.nome).where(Produto.pessoa_id == pessoa_id)).fetchall()
                     print("lista de produtos do usuario: ", produtos)
-                    if nome in produtos:
-                        return f'O produto {nome} já está em sua lista de monitoramento. Favor aguarde. Qualquer promoção enviaremos uma notificação para você!'
+                    #verif_produto = any(nome == produto for produto in produtos)
+                    if produtos:
+                        for item in produtos:
+                            print("nome: ", item, 'prod: ', item)
+                            if item == nome:
+                                print('Produto existente :D')
+                                return f'O produto < {nome} > já está em sua lista de monitoramento. Favor aguarde. Qualquer promoção enviaremos uma notificação para você!'
+                            else:
+                                session.add(produto)
+                                try:
+                                    session.commit()
+                                    return 'O produto foi adicionado em sua lista de monitoramento.'
+                                except Exception as e:
+                                    print(f"Erro ao cadastrar produto: ", e)
                     else:
                         session.add(produto)
                         try:
@@ -67,5 +80,6 @@ class Produto(Base):
                             return 'O produto foi adicionado em sua lista de monitoramento.'
                         except Exception as e:
                             print(f"Erro ao cadastrar produto: ", e)
+                        
             except Exception as e:
                 print("Erro ao tentar fazer conexão com o banco de dados: ", e)
